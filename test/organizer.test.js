@@ -11,9 +11,9 @@ describe("Organizer", function () {
     "Game.of.thrones",
     "House.of.cards",
     "Mom",
-    "Two.and.a.half.men"
+    "Two.and.a.half.men",
+    "Modern.Family"
   ];
-
 
   describe("move", function () {
     var tempPath;
@@ -27,6 +27,7 @@ describe("Organizer", function () {
         testMoveFile("Game.of.Thrones.S04E01.720p.HDTV.x264-KILLERS.mkv", dest[0]),
         testMoveFile("asdlfkjasdfñGaMe.Of.ThroNes.S04E01.720p.HDTV.x264-KILLERS.mkv", dest[0]),
         testMoveFile("Two.and.a.Half.Men.S11E02.720p.HDTV.X264-DIMENSION", dest[3]),
+        testMoveFile("Mom.S01E20.HDTV.x264-LOL.mp4", dest[2]),
         testMoveFile("Spiderman", undefined)
       ], done);
     });

@@ -20,6 +20,14 @@ exports.move = function (file, destPath, cb) {
 };
 
 function findDestination (path, directories) {
+
+  var seasonIndex = path.search(/S\d\dE\d\d/i);
+  if (seasonIndex < 0) {
+    return;
+  }
+
+  path = path.substring(0, seasonIndex);
+
   var fuzzySet = new FuzzySet();
   directories.forEach(function (directory) {
     fuzzySet.add(directory);
