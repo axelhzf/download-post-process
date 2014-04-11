@@ -7,15 +7,20 @@ var GLOB = "*.+(mkv|avi|mp4)";
 
 function watcher(basepath, destpath) {
   console.log(basepath, destpath);
-
   console.log("watching " + basepath + "/" + GLOB);
 
   gaze(GLOB, {cwd : basepath},function (err, watcher) {
     // wait until copy finish
-    var debouncedProcessFile = _.debounce(function (filepath) {
-      console.log("event!");
-      processFile(filepath, destpath);
-    }, 3000);
+    var debouncedFns = [];
+
+    function debouncedProcessFile (filepath) {
+      if (!debouncedFns[filepath]) {
+        debouncedFns[filepath] = _.debounce(function () {
+          processFile(filepath, destpath);
+        }, 3000);
+      }
+      debouncedFns[filepath]();
+    }
 
     watcher.on("added", debouncedProcessFile);
     watcher.on("changed", debouncedProcessFile);
