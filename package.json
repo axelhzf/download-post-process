@@ -6,7 +6,7 @@
     "gaze": "^0.5.1",
     "async": "^0.7.0",
     "temp": "^0.7.0",
-    "subtitles-downloader": "^0.0.10",
+    "subtitles-downloader": "^0.0.12",
     "underscore": "^1.6.0",
     "commander": "^2.2.0"
   },
