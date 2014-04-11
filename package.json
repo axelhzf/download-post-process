@@ -1,0 +1,15 @@
+{
+  "name": "download-post-process",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "gaze": "^0.5.1",
+    "async": "^0.7.0",
+    "temp": "^0.7.0"
+  },
+  "devDependencies": {
+    "chai": "^1.9.1",
+    "gulp-mocha": "^0.4.1",
+    "gulp": "^3.6.0"
+  }
+}
