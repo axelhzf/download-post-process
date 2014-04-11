@@ -10,15 +10,15 @@ function watcher(basepath, destpath) {
 
   console.log("watching " + basepath + "/" + GLOB);
 
-  gaze(GLOB, {cwd : basepath},function () {
+  gaze(GLOB, {cwd : basepath},function (err, watcher) {
     // wait until copy finish
     var debouncedProcessFile = _.debounce(function (filepath) {
       console.log("event!");
       processFile(filepath, destpath);
     }, 3000);
 
-    this.on("added", debouncedProcessFile);
-    this.on("changed", debouncedProcessFile);
+    watcher.on("added", debouncedProcessFile);
+    watcher.on("changed", debouncedProcessFile);
   });
 }
 
