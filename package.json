@@ -17,6 +17,6 @@
   },
   "main": "src/index.js",
   "bin": {
-    "download-post-process": "bin/subtitles-downloader"
+    "download-post-process": "./bin/subtitles-downloader"
   }
 }
