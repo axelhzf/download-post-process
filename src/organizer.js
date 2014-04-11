@@ -6,7 +6,7 @@ var async = require("async");
 exports.move = function (file, destPath, cb) {
   getDirectories(destPath, function (directories) {
     var basename = path.basename(file);
-    var matching = exports.findDestination(basename, directories);
+    var matching = findDestination(basename, directories);
 
     if (!matching) {
       return cb();
@@ -19,7 +19,7 @@ exports.move = function (file, destPath, cb) {
   });
 };
 
-exports.findDestination = function (path, directories) {
+function findDestination (path, directories) {
   var fuzzySet = new FuzzySet();
   directories.forEach(function (directory) {
     fuzzySet.add(directory);
@@ -30,7 +30,7 @@ exports.findDestination = function (path, directories) {
     return;
 
   return matching[0][1];
-};
+}
 
 function getDirectories (rootDir, cb) {
   fs.readdir(rootDir, function (err, files) {

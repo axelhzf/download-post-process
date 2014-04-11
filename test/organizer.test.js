@@ -14,27 +14,12 @@ describe("Organizer", function () {
     "Two.and.a.half.men"
   ];
 
-  function testFindDestination (input, expected) {
-    expect(organizer.findDestination(input, dest)).to.eql(expected);
-  }
-
-  it("should find destination", function () {
-    testFindDestination("Game.of.Thrones.S04E01.720p.HDTV.x264-KILLERS.mkv", dest[0]);
-    testFindDestination("asdlfkjasdfñGaMe.Of.ThroNes.S04E01.720p.HDTV.x264-KILLERS.mkv", dest[0]);
-    testFindDestination("Two.and.a.Half.Men.S11E02.720p.HDTV.X264-DIMENSION", dest[3]);
-    testFindDestination("Spiderman", undefined);
-  });
-
 
   describe("move", function () {
     var tempPath;
-    var destAbs;
 
     beforeEach(function (done) {
-      createTemporaryDestPath(function (err, directories) {
-        destAbs = directories;
-        done();
-      });
+      createTemporaryDestPath(done);
     });
 
     it("should move files", function (done) {
@@ -50,7 +35,6 @@ describe("Organizer", function () {
       return function (cb) {
         createTemporaryFile(fileName);
         organizer.move(fileName, tempPath, function (err, result) {
-          console.log(result);
           if (expectedPath) {
             expect(result).to.eql(tempPath + "/" + expectedPath + "/" + fileName);
           } else {
@@ -65,14 +49,13 @@ describe("Organizer", function () {
       temp.mkdir("move", function (err, info) {
         tempPath = info;
 
-        var destAbs = dest.map(function (directory) {
+        var absolutePaths = dest.map(function (directory) {
           return tempPath + "/" + directory;
         });
 
+        absolutePaths.forEach(fs.mkdirSync);
 
-        destAbs.forEach(fs.mkdirSync);
-
-        cb(null, destAbs);
+        cb(null, absolutePaths);
       });
     }
 
