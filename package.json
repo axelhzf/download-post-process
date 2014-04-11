@@ -8,7 +8,8 @@
     "temp": "^0.7.0",
     "subtitles-downloader": "^0.0.12",
     "underscore": "^1.6.0",
-    "commander": "^2.2.0"
+    "commander": "^2.2.0",
+    "fuzzyset.js": "0.0.1"
   },
   "devDependencies": {
     "chai": "^1.9.1",
