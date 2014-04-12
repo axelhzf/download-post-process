@@ -3,18 +3,19 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "gaze": "^0.5.1",
     "async": "^0.7.0",
-    "temp": "^0.7.0",
     "subtitles-downloader": "^0.0.12",
     "underscore": "^1.6.0",
     "commander": "^2.2.0",
-    "fuzzyset.js": "0.0.1"
+    "fuzzyset.js": "0.0.1",
+    "minimatch": "^0.2.14",
+    "glob": "^3.2.9"
   },
   "devDependencies": {
     "chai": "^1.9.1",
     "gulp-mocha": "^0.4.1",
-    "gulp": "^3.6.0"
+    "gulp": "^3.6.0",
+    "temp": "^0.7.0"
   },
   "main": "src/index.js",
   "bin": {
