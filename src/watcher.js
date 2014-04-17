@@ -8,10 +8,13 @@ var glob = require("glob");
 var async = require("async");
 
 var GLOB = "*.+(mkv|avi|mp4)";
+var SUBTITLES_RETRY_TIME = 1000 * 60 * 10; //every hour
 
 function Watcher (basepath, destpath) {
   this.basepath = basepath;
   this.destpath = destpath;
+
+  this.subtitlesQueue = async.queue(this.subtitlesWorker.bind(this));
 
   this.initWatcher();
 }
@@ -69,23 +72,28 @@ Watcher.prototype = {
     organizer.move(file, this.destpath, function (err, movedFile) {
       if (movedFile) {
         console.log("Move " + file + " to " + movedFile);
-        self.downloadSubtitles(movedFile);
+        self.subtitlesQueue.push({filepath: movedFile, language: "spa"});
+        self.subtitlesQueue.push({filepath: movedFile, language: "eng"});
       }
     });
   },
 
-  downloadSubtitles: function (file) {
-    var options = {
-      filepath: file,
-      languages: ["eng", "spa"],
-      mix: true
-    };
-    subtitlesDownloader(options, function (err) {
-      if (err) return console.error(err);
-      console.log("Subtitles downloaded");
+  subtitlesWorker: function (subtitlesTask, cb) {
+    var self = this;
+    subtitlesDownloader.downloadSubtitle(subtitlesTask.filepath, subtitlesTask.language, function (err) {
+      if (err) {
+        console.error(err);
+        console.log("Retry in " + SUBTITLES_RETRY_TIME);
+        setTimeout(function () {
+          self.subtitlesQueue.push(subtitlesTask);
+        }, SUBTITLES_RETRY_TIME);
+        cb();
+      } else {
+        console.log("Subtitles downloaded");
+        cb();
+      }
     });
   }
-
 };
 
 var watcher = function (basepath, destpath) {
