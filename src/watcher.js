@@ -17,6 +17,7 @@ function Watcher (basepath, destpath) {
   this.subtitlesQueue = async.queue(this.subtitlesWorker.bind(this));
 
   this.initWatcher();
+  this.processBaseDirectory();
 }
 
 Watcher.prototype = {
@@ -67,7 +68,7 @@ Watcher.prototype = {
     });
   },
 
-  processFile: function (file) {
+  processFile: function (file, cb) {
     var self = this;
     organizer.move(file, this.destpath, function (err, movedFile) {
       if (movedFile) {
@@ -75,6 +76,7 @@ Watcher.prototype = {
         self.subtitlesQueue.push({filepath: movedFile, language: "spa"});
         self.subtitlesQueue.push({filepath: movedFile, language: "eng"});
       }
+      if (cb) cb(err);
     });
   },
 
@@ -93,7 +95,20 @@ Watcher.prototype = {
         cb();
       }
     });
+  },
+
+  processBaseDirectory: function () {
+    var self = this;
+    glob(GLOB, {cwd: this.basepath}, function (err, files) {
+      files = files.map(function (file) {
+        return path.join(self.basepath, file);
+      });
+      async.mapSeries(files, self.processFile.bind(self), function () {
+        console.log("Directory updated");
+      });
+    });
   }
+
 };
 
 var watcher = function (basepath, destpath) {
