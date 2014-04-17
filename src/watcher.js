@@ -7,6 +7,17 @@ var path = require("path");
 var glob = require("glob");
 var async = require("async");
 
+var winston = require("winston");
+var logger = winston.loggers.add('watcher', {
+  console: {
+    level: 'silly',
+    colorize: 'true',
+    //label: 'watcher',
+    timestamp: true
+  }
+});
+
+
 var GLOB = "*.+(mkv|avi|mp4)";
 var SUBTITLES_RETRY_TIME = 1000 * 60 * 10; //every hour
 
@@ -25,7 +36,8 @@ Watcher.prototype = {
   initWatcher: function () {
     var self = this;
     var watchedEvents = _.object(["change", "rename"], []);
-    console.log("Watching " + this.basepath + "/" + GLOB + " -> " + this.destpath);
+    logger.info("Watching %s/%s -> %s", this.basepath, GLOB, this.destpath);
+
     fs.watch(this.basepath, function (event, filename) {
       if (_.has(watchedEvents, event)) {
         self.onFsEvent(event, filename);
@@ -72,7 +84,7 @@ Watcher.prototype = {
     var self = this;
     organizer.move(file, this.destpath, function (err, movedFile) {
       if (movedFile) {
-        console.log("Move " + file + " to " + movedFile);
+        logger.info("Moved %s -> %s", file, movedFile);
         self.subtitlesQueue.push({filepath: movedFile, language: "spa"});
         self.subtitlesQueue.push({filepath: movedFile, language: "eng"});
       }
@@ -84,14 +96,13 @@ Watcher.prototype = {
     var self = this;
     subtitlesDownloader.downloadSubtitle(subtitlesTask.filepath, subtitlesTask.language, function (err) {
       if (err) {
-        console.error(err);
-        console.log("Retry in " + SUBTITLES_RETRY_TIME);
+        logger.error(err);
         setTimeout(function () {
           self.subtitlesQueue.push(subtitlesTask);
         }, SUBTITLES_RETRY_TIME);
         cb();
       } else {
-        console.log("Subtitles downloaded");
+        logger.info("subtitles %s[%s]", subtitlesTask.filepath, subtitlesTask.language);
         cb();
       }
     });
@@ -104,7 +115,7 @@ Watcher.prototype = {
         return path.join(self.basepath, file);
       });
       async.mapSeries(files, self.processFile.bind(self), function () {
-        console.log("Directory updated");
+        logger.info("Base directory updated %s", self.basepath);
       });
     });
   }
