@@ -7,6 +7,10 @@ var co = require("co");
 var thunkify = require("thunkify");
 var _ = require("underscore");
 
+var move = thunkify(organizer.move);
+var mkTempDir = thunkify(temp.mkdir);
+var mkdir = thunkify(fs.mkdir);
+
 describe("Organizer", function () {
 
   var dest = [
@@ -38,12 +42,6 @@ describe("Organizer", function () {
         yield tests;
       })(done);
     });
-
-    var move = thunkify(organizer.move);
-    var mkTempDir = thunkify(temp.mkdir);
-    var mkdir = thunkify(fs.mkdir);
-    var fsOpen = thunkify(fs.open);
-    var fsClose = thunkify(fs.close);
 
     function* testMoveFile (fileName, expectedPath) {
       var temporaryFile = createTemporaryFile(fileName);
