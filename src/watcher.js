@@ -2,34 +2,37 @@ var organizer = require("./organizer");
 var subtitlesDownloader = require("subtitles-downloader");
 var _ = require("underscore");
 var fs = require("fs");
+var cfs = require("co-fs");
 var minimatch = require("minimatch");
 var path = require("path");
 var glob = require("glob");
-var async = require("async");
+var thunkify = require("thunkify");
+var co = require("co");
+var each = require("co-each");
 
 var winston = require("winston");
 var logger = winston.loggers.add('watcher', {
   console: {
     level: 'silly',
     colorize: 'true',
-    //label: 'watcher',
     timestamp: true
   }
 });
 
-
 var GLOB = "*.+(mkv|avi|mp4)";
-var SUBTITLES_RETRY_TIME = 1000 * 60 * 10; //every hour
+var SUBTITLES_RETRY_TIME = 1000 * 60 * 10;
 
 function Watcher (basepath, destpath) {
   this.basepath = basepath;
   this.destpath = destpath;
 
-  this.subtitlesQueue = async.queue(this.subtitlesWorker.bind(this));
-
   this.initWatcher();
   this.processBaseDirectory();
 }
+
+var glob = thunkify(glob);
+var move = thunkify(organizer.move);
+var downloadSubtitle = thunkify(subtitlesDownloader.downloadSubtitle);
 
 Watcher.prototype = {
 
@@ -43,81 +46,63 @@ Watcher.prototype = {
         self.onFsEvent(event, filename);
       }
     });
+
   },
 
   onFsEvent: function (event, filename) {
-    var self = this;
-    var file = path.join(this.basepath, filename);
-    fs.stat(file, function (err, stat) {
-      if (err) return;
-      if (stat.isDirectory()) {
-        //avoid previews
-        self.findBiggerFileInDirectory(file, function (err, biggerFile) {
-          self.processFile(biggerFile);
-        });
-      } else {
-        var match = minimatch(filename, GLOB);
-        if (match) {
-          self.processFile(file);
+    co(function *() {
+      var file = path.join(this.basepath, filename);
+      try {
+        var stat = yield cfs.stat(file);
+        if (stat.isDirectory()) {
+          var biggerFile = yield this.findBiggerFileInDirectory(file);
+          yield this.processFile(biggerFile);
+        } else {
+          var match = minimatch(filename, GLOB);
+          if (match) {
+            yield this.processFile(file);
+          }
         }
+      } catch (e) {
+        logger.error(e);
       }
-    });
+    }).call(this);
   },
 
-  findBiggerFileInDirectory: function (directory, cb) {
-    glob(GLOB, {cwd: directory}, function (err, files) {
-      async.mapSeries(files, function (filename, cb) {
-        var file = path.join(directory, filename);
-        fs.stat(file, function (err, stat) {
-          cb(err, {file: file, stat: stat});
-        });
-      }, function (err, fileStats) {
-        var biggerFile = _.max(fileStats, function (fileStat) {
-          return fileStat.stat.size;
-        });
-        cb(null, biggerFile.file);
-      });
+  findBiggerFileInDirectory: function *(directory) {
+    var files = yield glob(GLOB, {cwd: directory});
+    files = yield _.map(files, function (filename) {
+      var file = path.join(directory, filename);
+      return {file: file, size: cfs.stat};
     });
+    var biggerFile = _.max(files, function (file) {
+      return file.stat.size;
+    });
+    return biggerFile.file;
   },
 
-  processFile: function (file, cb) {
-    var self = this;
-    organizer.move(file, this.destpath, function (err, movedFile) {
-      if (movedFile) {
-        logger.info("Moved %s -> %s", file, movedFile);
-        self.subtitlesQueue.push({filepath: movedFile, language: "spa"});
-        self.subtitlesQueue.push({filepath: movedFile, language: "eng"});
-      }
-      if (cb) cb(err);
-    });
-  },
-
-  subtitlesWorker: function (subtitlesTask, cb) {
-    var self = this;
-    subtitlesDownloader.downloadSubtitle(subtitlesTask.filepath, subtitlesTask.language, function (err) {
-      if (err) {
-        logger.error(err);
-        setTimeout(function () {
-          self.subtitlesQueue.push(subtitlesTask);
-        }, SUBTITLES_RETRY_TIME);
-        cb();
-      } else {
-        logger.info("subtitles %s[%s]", subtitlesTask.filepath, subtitlesTask.language);
-        cb();
-      }
-    });
+  processFile: function *(file) {
+    var movedFile = yield move(file, this.destpath);
+    if (movedFile) {
+      yield downloadSubtitle(movedFile, "eng");
+      yield downloadSubtitle(movedFile, "spa");
+    }
   },
 
   processBaseDirectory: function () {
     var self = this;
-    glob(GLOB, {cwd: this.basepath}, function (err, files) {
-      files = files.map(function (file) {
-        return path.join(self.basepath, file);
-      });
-      async.mapSeries(files, self.processFile.bind(self), function () {
+    co(function *() {
+      try {
+        var files = yield glob(GLOB, {cwd: self.basepath});
+        for (var i = 0; i < files.length; i++) {
+          yield self.processFile(path.join(self.basepath, files[i]))
+        }
         logger.info("Base directory updated %s", self.basepath);
-      });
-    });
+      } catch (e) {
+        console.log("Error processing base directory", e);
+      }
+    })();
+
   }
 
 };
