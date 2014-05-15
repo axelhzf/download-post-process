@@ -41,12 +41,16 @@ Watcher.prototype = {
     var watchedEvents = _.object(["change", "rename"], []);
     logger.info("Watching %s/%s -> %s", this.basepath, GLOB, this.destpath);
 
-    fs.watch(this.basepath, function (event, filename) {
+    this.watcher = fs.watch(this.basepath, function (event, filename) {
       if (_.has(watchedEvents, event)) {
         self.onFsEvent(event, filename);
       }
     });
 
+  },
+
+  stop : function () {
+    this.watcher.close();
   },
 
   onFsEvent: function (event, filename) {
