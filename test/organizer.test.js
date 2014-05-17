@@ -1,72 +1,41 @@
 var fs = require("fs");
+var path = require("path");
 var expect = require("chai").expect;
 var organizer = require("../src/organizer");
 var temp = require("temp");
-var async = require("async");
 var co = require("co");
 var thunkify = require("thunkify");
-var _ = require("underscore");
 
 var move = thunkify(organizer.move);
-var mkTempDir = thunkify(temp.mkdir);
-var mkdir = thunkify(fs.mkdir);
+var fileUtils = require("./fileUtils");
 
 describe("Organizer", function () {
 
-  var dest = [
-    "Game.of.thrones",
-    "House.of.cards",
-    "Mom",
-    "Two.and.a.half.men",
-    "Modern.Family"
-  ];
-
   describe("move", function () {
-    var tempPath;
-
-    beforeEach(function (done) {
-      co(function* () {
-        yield createTemporaryDestPath();
-      })(done);
-    });
 
     it("should move files", function (done) {
       co(function* () {
-        var tests = [
-          testMoveFile("Game.of.Thrones.S04E01.720p.HDTV.x264-KILLERS.mkv", dest[0]),
-          testMoveFile("asdlfkjasdfñGaMe.Of.ThroNes.S04E01.720p.HDTV.x264-KILLERS.mkv", dest[0]),
-          testMoveFile("Two.and.a.Half.Men.S11E02.720p.HDTV.X264-DIMENSION", dest[3]),
-          testMoveFile("Mom.S01E20.HDTV.x264-LOL.mp4", dest[2]),
-          testMoveFile("Spiderman", undefined)
-        ];
-        yield tests;
+        var tempFolder = yield fileUtils.createTmpDirectory("move");
+        var file = "Game.of.Thrones.S04E01.720p.HDTV.x264-KILLERS.mkv";
+        var tempFile = path.join(tempFolder, file);
+        fileUtils.createTmpFile(tempFile);
+        var movedFile = yield move(tempFile, tempFolder);
+        expect(movedFile).to.equal(path.join(tempFolder, "Game.of.Thrones", file));
       })(done);
     });
 
-    function* testMoveFile (fileName, expectedPath) {
-      var temporaryFile = createTemporaryFile(fileName);
-      var result = yield move(temporaryFile, tempPath);
-      var expected = _.isUndefined(expectedPath) ? undefined : tempPath + "/" + expectedPath + "/" + fileName;
-      expect(result).to.equal(expected);
-    }
-
-    function* createTemporaryDestPath () {
-      tempPath = yield mkTempDir("move");
-      var absolutePaths = dest.map(function (directory) {
-        return tempPath + "/" + directory;
-      });
-      yield absolutePaths.map(function (path) {
-        return mkdir(path)
-      });
-      return absolutePaths;
-    }
-
-    function createTemporaryFile (name) {
-      var fullPath = tempPath + "/" + name;
-      var fd = fs.openSync(tempPath + "/" + name, 'w');
-      fs.close(fd);
-      return fullPath;
-    }
+  });
+  
+  describe("showFromPath", function () {
+    it("should extract showName", function () {
+      expect(organizer.showFromPath("Game.of.Thrones.S01E12")).to.equal("Game.of.Thrones");
+      expect(organizer.showFromPath("game.of.thrones.S01E12")).to.equal("Game.of.Thrones");
+      expect(organizer.showFromPath("game Of thrones S01E12")).to.equal("Game.of.Thrones");
+      expect(organizer.showFromPath("GaMe.Of.ThRoNes.S01E12")).to.equal("Game.of.Thrones");
+      expect(organizer.showFromPath("/home/user/path/show/game.of.thrones.S01E12")).to.equal("Game.of.Thrones");
+      expect(organizer.showFromPath("two.and.a.half.men.S01E12")).to.equal("Two.and.a.Half.Men");
+      expect(organizer.showFromPath("two.and.a.half.men")).to.be.undefined;
+    });
   });
 
 });

@@ -3,25 +3,41 @@ var path = require("path");
 var co = require("co");
 var thunkify = require("thunkify");
 var mkdirp = thunkify(require("mkdirp"));
+var _ = require("underscore");
+var _s = require("underscore.string");
 
-exports.move = function (file, destPath, cb) {
+function move(file, destPath, cb) {
   co(function* () {
     var basename = path.basename(file);
-    var matching = findDestination(basename);
-    if (!matching) return;
+    var show = showFromPath(basename);
+    if (!show) return;
 
-    yield mkdirp(path.join(destPath, matching));
-    var newPath = path.join(destPath, matching, basename);
+    yield mkdirp(path.join(destPath, show));
+    var newPath = path.join(destPath, show, basename);
     yield fs.rename(file, newPath);
     return newPath;
   })(cb);
-};
-
-function findDestination (path) {
-  var episodeMatch = path.match(/(.*)\.(S\d\dE\d\d)/i);
-  if (!episodeMatch) {
-    return;
-  }
-  return episodeMatch[1];
 }
+
+var UNCAPITALIZED_WORDS = ["of", "a", "and"];
+
+function showFromPath (path) {
+  path = path.replace(/\s/g, ".");
+  var showMatch = path.match(/(?:.*\/)?(.*)\.(S\d\dE\d\d)/i);
+  if (!showMatch) return;
+
+  var show = showMatch[1].toLowerCase();
+  var words = show.split(".");
+  show = words.map(function (word) {
+    if (!_.contains(UNCAPITALIZED_WORDS, word)) {
+      return _s.capitalize(word);
+    }
+    return word;
+  }).join(".");
+  return show;
+}
+
+
+exports.move = move;
+exports.showFromPath = showFromPath;
 
