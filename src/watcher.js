@@ -30,14 +30,19 @@ function Watcher (basepath, destpath) {
   this.basepath = basepath;
   this.destpath = destpath;
   this.events = new EventEmitter();
+
+  this.events.on("initialized", this.startWatcher.bind(this));
 }
 
 Watcher.prototype = {
 
   start: function () {
+    this.processBaseDirectory();
+  },
+
+  startWatcher: function () {
     var self = this;
     var watchedEvents = _.object(["change", "rename"], []);
-    this.processBaseDirectory();
     this.watcher = fs.watch(this.basepath, function (event, filename) {
       if (_.has(watchedEvents, event)) {
         self.onFsEvent(event, filename);
@@ -47,7 +52,9 @@ Watcher.prototype = {
   },
 
   stop: function () {
-    this.watcher.close();
+    if (this.watcher) {
+      this.watcher.close();
+    }
   },
 
   onFsEvent: function (event, filename) {
@@ -102,7 +109,9 @@ Watcher.prototype = {
 
   processDirectory: function *(dir) {
     var biggerFile = yield this.findBiggerFileInDirectory(dir);
-    yield this.processFile(biggerFile);
+    if (biggerFile) {
+      yield this.processFile(biggerFile);
+    }
     yield exec("rm -rf " + dir);
   },
 
