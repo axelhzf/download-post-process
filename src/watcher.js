@@ -11,6 +11,10 @@ var each = require("co-each");
 var EventEmitter = require("events").EventEmitter;
 var exec = require("co-exec");
 var winston = require("winston");
+var debug = require("debug")("download-post-process");
+var minimatch = require("minimatch");
+var bash = require("bash");
+var path = require("path");
 
 var glob = thunkify(glob);
 var move = thunkify(organizer.move);
@@ -26,7 +30,7 @@ var logger = winston.loggers.add('watcher', {
 
 var GLOB = "*.+(mkv|avi|mp4)";
 
-function Watcher (basepath, destpath) {
+function Watcher(basepath, destpath) {
   this.basepath = basepath;
   this.destpath = destpath;
   this.events = new EventEmitter();
@@ -58,6 +62,7 @@ Watcher.prototype = {
   },
 
   onFsEvent: function (event, filename) {
+    debug("fs event [" + event + "]");
     co(function *() {
       var fullPath = path.join(this.basepath, filename);
       try {
@@ -71,24 +76,26 @@ Watcher.prototype = {
   processBaseDirectory: function () {
     var self = this;
     co(function *() {
-      try {
-        var directoryContent = yield cfs.readdir(self.basepath);
-        for (var i = 0; i < directoryContent.length; i++) {
-          var content = directoryContent[i];
-          var fullPath = path.join(self.basepath, content);
+      var directoryContent = yield cfs.readdir(self.basepath);
+      for (var i = 0; i < directoryContent.length; i++) {
+        var content = directoryContent[i];
+        var fullPath = path.join(self.basepath, content);
+        try {
           yield self.processPath(fullPath);
+        } catch (e) {
+          console.log("Error processing base directory", e);
         }
-        logger.info("Base directory updated %s", self.basepath);
-        self.events.emit("initialized");
-      } catch (e) {
-        console.log("Error processing base directory", e);
       }
+      logger.info("Base directory updated %s", self.basepath);
+      self.events.emit("initialized");
+
     })();
   },
 
   processPath: function *(fullPath) {
-    var showMatch = fullPath.match(/(S\d\dE\d\d)/i);
-    if (!showMatch) return;
+    //var showMatch = fullPath.match(/(S\d\dE\d\d)/i);
+    //if (!showMatch) return;
+
 
     var stat = yield cfs.stat(fullPath);
     if (stat.isDirectory()) {
@@ -99,12 +106,17 @@ Watcher.prototype = {
   },
 
   processFile: function *(file) {
-    var movedFile = yield move(file, this.destpath);
-    if (movedFile) {
-      yield downloadSubtitle(movedFile, "eng");
-      yield downloadSubtitle(movedFile, "spa");
+    var match = minimatch(path.basename(file), GLOB);
+    if (match) {
+      var movedFile = yield move(file, this.destpath);
+      if (movedFile) {
+        yield downloadSubtitle(movedFile, "eng");
+        yield downloadSubtitle(movedFile, "spa");
+      }
+      this.events.emit("processFile", file);
+    } else {
+      debug("Doesn't match %s %s/%s", file, this.basepath, GLOB);
     }
-    this.events.emit("processFile", file);
   },
 
   processDirectory: function *(dir) {
@@ -112,14 +124,14 @@ Watcher.prototype = {
     if (biggerFile) {
       yield this.processFile(biggerFile);
     }
-    yield exec("rm -rf " + dir);
+    yield exec("rm -rf " + bash.escape(dir));
   },
 
   findBiggerFileInDirectory: function *(directory) {
     var files = yield glob(GLOB, {cwd: directory});
     var biggerFile;
-    var biggerFileSize = -1 ;
-    for(var i = 0; i < files.length; i++) {
+    var biggerFileSize = -1;
+    for (var i = 0; i < files.length; i++) {
       var file = path.join(directory, files[i]);
       var size = (yield cfs.stat(file)).size;
       if (size > biggerFileSize) {
