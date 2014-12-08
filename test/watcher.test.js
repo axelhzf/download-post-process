@@ -25,7 +25,7 @@ describe("watcher", function () {
     beforeEach(function () {
       w = watcher(basepath, destpath);
       processStub = sinon.stub(w, "processFile", function *(file) {
-        console.log(file);
+        console.log("process file", file);
         return "";
       });
     });
