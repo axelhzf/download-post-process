@@ -23,16 +23,15 @@
   },
   "devDependencies": {
     "chai": "^1.9.1",
-    "gulp-mocha": "^0.4.1",
-    "gulp": "^3.6.0",
-    "temp": "^0.7.0",
-    "sinon": "~1.9.1"
+    "mocha": "^2.0.1",
+    "sinon": "~1.9.1",
+    "temp": "^0.7.0"
   },
   "main": "src/index.js",
   "bin": {
     "download-post-process": "./bin/download-post-process"
   },
   "scripts": {
-    "test": "node --harmony node_modules/.bin/gulp test"
+    "test": "mocha --harmony test"
   }
 }
