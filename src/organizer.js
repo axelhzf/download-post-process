@@ -7,7 +7,7 @@ var _ = require("underscore");
 var _s = require("underscore.string");
 
 function move(file, destPath, cb) {
-  co(function* () {
+  return co(function* () {
     var basename = path.basename(file);
     var item = guestItem(basename);
     if (!item) return;
@@ -25,7 +25,11 @@ function move(file, destPath, cb) {
       yield fs.rename(file, newPath);
       return newPath;
     }
-  })(cb);
+  }).then(function (result) {
+    cb(null, result);
+  }, function (e) {
+    cb(e);
+  });
 }
 
 

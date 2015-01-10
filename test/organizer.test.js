@@ -5,34 +5,30 @@ var organizer = require("../src/organizer");
 var temp = require("temp");
 var co = require("co");
 var thunkify = require("thunkify");
-
 var move = thunkify(organizer.move);
 var fileUtils = require("./fileUtils");
+require("co-mocha");
 
 describe("Organizer", function () {
 
   describe("move", function () {
 
-    it("should a tvshow file", function (done) {
-      co(function* () {
-        var tempFolder = yield fileUtils.createTmpDirectory("move");
-        var file = "Game.of.Thrones.S04E01.720p.HDTV.x264-KILLERS.mkv";
-        var tempFile = path.join(tempFolder, file);
-        fileUtils.createTmpFile(tempFile);
-        var movedFile = yield move(tempFile, tempFolder);
-        expect(movedFile).to.equal(path.join(tempFolder, "tvshows", "Game.of.Thrones", file));
-      })(done);
+    it("should a tvshow file", function* () {
+      var tempFolder = yield fileUtils.createTmpDirectory("move");
+      var file = "Game.of.Thrones.S04E01.720p.HDTV.x264-KILLERS.mkv";
+      var tempFile = path.join(tempFolder, file);
+      fileUtils.createTmpFile(tempFile);
+      var movedFile = yield move(tempFile, tempFolder);
+      expect(movedFile).to.equal(path.join(tempFolder, "tvshows", "Game.of.Thrones", file));
     });
 
-    it("should a movie file", function (done) {
-      co(function* () {
-        var tempFolder = yield fileUtils.createTmpDirectory("move");
-        var file = "Guardians.of.the.galaxy.mkv";
-        var tempFile = path.join(tempFolder, file);
-        fileUtils.createTmpFile(tempFile);
-        var movedFile = yield move(tempFile, tempFolder);
-        expect(movedFile).to.equal(path.join(tempFolder, "movies", file));
-      })(done);
+    it("should a movie file", function* () {
+      var tempFolder = yield fileUtils.createTmpDirectory("move");
+      var file = "Guardians.of.the.galaxy.mkv";
+      var tempFile = path.join(tempFolder, file);
+      fileUtils.createTmpFile(tempFile);
+      var movedFile = yield move(tempFile, tempFolder);
+      expect(movedFile).to.equal(path.join(tempFolder, "movies", file));
     });
 
 

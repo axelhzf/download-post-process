@@ -11,11 +11,9 @@ describe("watcher", function () {
   var basepath;
   var destpath;
 
-  beforeEach(function (done) {
-    co(function* () {
-      basepath = yield fileUtils.createTmpDirectory();
-      destpath = yield fileUtils.createTmpDirectory();
-    })(done);
+  beforeEach(function* () {
+    basepath = yield fileUtils.createTmpDirectory();
+    destpath = yield fileUtils.createTmpDirectory();
   });
 
   describe("process at start", function () {

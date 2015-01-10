@@ -63,19 +63,20 @@ Watcher.prototype = {
 
   onFsEvent: function (event, filename) {
     debug("fs event [" + event + "]");
+    var self = this;
     co(function *() {
       var fullPath = path.join(this.basepath, filename);
       try {
-        yield this.processPath(fullPath);
+        yield self.processPath(fullPath);
       } catch (e) {
         logger.error(e);
       }
-    }).call(this);
+    });
   },
 
   processBaseDirectory: function () {
     var self = this;
-    co(function *() {
+    return co(function *() {
       var directoryContent = yield cfs.readdir(self.basepath);
       for (var i = 0; i < directoryContent.length; i++) {
         var content = directoryContent[i];
@@ -89,7 +90,7 @@ Watcher.prototype = {
       logger.info("Base directory updated %s", self.basepath);
       self.events.emit("initialized");
 
-    })();
+    });
   },
 
   processPath: function *(fullPath) {
