@@ -2,7 +2,6 @@ var fs = require("fs");
 var path = require("path");
 var fileUtils = require("./fileUtils");
 var watcher = require("../src/watcher");
-var co = require("co");
 var expect = require("chai").expect;
 var sinon = require("sinon");
 var Promise = require("bluebird");
@@ -124,8 +123,6 @@ describe("watcher", function () {
       });
     }
 
-
   });
-
 
 });
