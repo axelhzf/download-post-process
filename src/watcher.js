@@ -1,24 +1,17 @@
 var organizer = require("./organizer");
 var subtitlesDownloader = require("subtitles-downloader");
 var _ = require("underscore");
-var fs = require("fs");
-var cfs = require("co-fs");
+var fs = require("mz/fs");
 var path = require("path");
-var glob = require("glob");
-var thunkify = require("thunkify");
 var co = require("co");
-var each = require("co-each");
 var EventEmitter = require("events").EventEmitter;
-var exec = require("co-exec");
+var exec = require('mz/child_process').exec;
 var winston = require("winston");
 var debug = require("debug")("download-post-process");
 var minimatch = require("minimatch");
 var bash = require("bash");
-var path = require("path");
-
-var glob = thunkify(glob);
-var move = thunkify(organizer.move);
-var downloadSubtitle = thunkify(subtitlesDownloader.downloadSubtitle);
+var Promise = require("bluebird");
+var glob = Promise.promisify(require("glob"));
 
 var logger = winston.loggers.add('watcher', {
   console: {
@@ -29,6 +22,7 @@ var logger = winston.loggers.add('watcher', {
 });
 
 var GLOB = "*.+(mkv|avi|mp4)";
+var NESTED_GLOB = "**/" + GLOB;
 
 function Watcher(basepath, destpath) {
   this.basepath = basepath;
@@ -77,28 +71,23 @@ Watcher.prototype = {
   processBaseDirectory: function () {
     var self = this;
     return co(function *() {
-      var directoryContent = yield cfs.readdir(self.basepath);
+      var directoryContent = yield fs.readdir(self.basepath);
       for (var i = 0; i < directoryContent.length; i++) {
         var content = directoryContent[i];
         var fullPath = path.join(self.basepath, content);
         try {
           yield self.processPath(fullPath);
         } catch (e) {
-          console.log("Error processing base directory", e);
+          logger.error("Error processing path", e);
         }
       }
       logger.info("Base directory updated %s", self.basepath);
       self.events.emit("initialized");
-
     });
   },
 
   processPath: function *(fullPath) {
-    //var showMatch = fullPath.match(/(S\d\dE\d\d)/i);
-    //if (!showMatch) return;
-
-
-    var stat = yield cfs.stat(fullPath);
+    var stat = yield fs.stat(fullPath);
     if (stat.isDirectory()) {
       yield this.processDirectory(fullPath);
     } else {
@@ -107,40 +96,37 @@ Watcher.prototype = {
   },
 
   processFile: function *(file) {
-    var match = minimatch(path.basename(file), GLOB);
-    if (match) {
-      var movedFile = yield move(file, this.destpath);
-      if (movedFile) {
-        yield downloadSubtitle(movedFile, "eng");
-        yield downloadSubtitle(movedFile, "spa");
-      }
-      this.events.emit("processFile", file);
-    } else {
+    var baseFile = path.basename(file);
+    var match = minimatch(baseFile, GLOB);
+
+    if (!match) {
       debug("Doesn't match %s %s/%s", file, this.basepath, GLOB);
+      return;
     }
+
+    var sampleMatch = baseFile.match(/sample/i);
+
+    if (sampleMatch) {
+      debug("Ignoring sample file %s", file);
+      return;
+    }
+
+    var movedFile = yield organizer.move(file, this.destpath);
+    if (movedFile) {
+      yield subtitlesDownloader.downloadSubtitle(movedFile, "eng");
+      yield subtitlesDownloader.downloadSubtitle(movedFile, "spa");
+    }
+    this.events.emit("processFile", file);
   },
 
   processDirectory: function *(dir) {
-    var biggerFile = yield this.findBiggerFileInDirectory(dir);
-    if (biggerFile) {
-      yield this.processFile(biggerFile);
+    var files = yield glob(NESTED_GLOB, {cwd: dir});
+    for(var i = 0; i < files.length; i++) {
+      yield this.processFile(path.join(dir, files[i]));
     }
-    yield exec("rm -rf " + bash.escape(dir));
-  },
-
-  findBiggerFileInDirectory: function *(directory) {
-    var files = yield glob(GLOB, {cwd: directory});
-    var biggerFile;
-    var biggerFileSize = -1;
-    for (var i = 0; i < files.length; i++) {
-      var file = path.join(directory, files[i]);
-      var size = (yield cfs.stat(file)).size;
-      if (size > biggerFileSize) {
-        biggerFile = file;
-        biggerFileSize = size;
-      }
+    if (files.length > 0 ) {
+      yield exec("rm -rf " + bash.escape(dir));
     }
-    return biggerFile;
   }
 
 };

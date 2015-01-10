@@ -1,12 +1,12 @@
 var fs = require("co-fs");
 var path = require("path");
 var co = require("co");
-var thunkify = require("thunkify");
-var mkdirp = thunkify(require("mkdirp"));
+var Promise = require("bluebird");
+var mkdirp = Promise.promisify(require("mkdirp"));
 var _ = require("underscore");
 var _s = require("underscore.string");
 
-function move(file, destPath, cb) {
+function move(file, destPath) {
   return co(function* () {
     var basename = path.basename(file);
     var item = guestItem(basename);
@@ -25,10 +25,6 @@ function move(file, destPath, cb) {
       yield fs.rename(file, newPath);
       return newPath;
     }
-  }).then(function (result) {
-    cb(null, result);
-  }, function (e) {
-    cb(e);
   });
 }
 
