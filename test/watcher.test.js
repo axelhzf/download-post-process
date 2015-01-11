@@ -1,7 +1,7 @@
 var fs = require("fs");
 var path = require("path");
 var fileUtils = require("./fileUtils");
-var watcher = require("../src/watcher");
+var Watcher = require("../src/watcher");
 var expect = require("chai").expect;
 var sinon = require("sinon");
 var Promise = require("bluebird");
@@ -23,7 +23,11 @@ describe("watcher", function () {
     var moveStub;
 
     beforeEach(function () {
-      w = watcher(basepath, destpath);
+      var options = {
+        basePath: basepath,
+        destPath: destpath
+      };
+      w = new Watcher(options);
       moveStub = sinon.stub(organizer, "move", function (file) {
         return Promise.resolve(file);
       });
@@ -112,7 +116,7 @@ describe("watcher", function () {
         w.start();
         w.stop();
 
-        w.events.on("initialized", function () {
+        w.on("initialized", function () {
           var parameters = [];
           var totalCount = moveStub.callCount;
           for (var i = 0; i < totalCount; i++) {

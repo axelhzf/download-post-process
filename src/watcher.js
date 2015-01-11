@@ -7,11 +7,12 @@ var co = require("co");
 var EventEmitter = require("events").EventEmitter;
 var exec = require('mz/child_process').exec;
 var winston = require("winston");
-var debug = require("debug")("download-post-process");
+var debug = require("debug")("video-organizer");
 var minimatch = require("minimatch");
 var bash = require("bash");
 var Promise = require("bluebird");
 var glob = Promise.promisify(require("glob"));
+var util = require("util");
 
 var logger = winston.loggers.add('watcher', {
   console: {
@@ -24,15 +25,16 @@ var logger = winston.loggers.add('watcher', {
 var GLOB = "*.+(mkv|avi|mp4)";
 var NESTED_GLOB = "**/" + GLOB;
 
-function Watcher(basepath, destpath) {
-  this.basepath = basepath;
-  this.destpath = destpath;
-  this.events = new EventEmitter();
+function Watcher(options) {
+  this.basepath = options.basePath;
+  this.destpath = options.destPath;
 
-  this.events.on("initialized", this.startWatcher.bind(this));
+  this.on("initialized", this.startWatcher.bind(this));
 }
 
-Watcher.prototype = {
+util.inherits(Watcher, EventEmitter);
+
+_.extend(Watcher.prototype, {
 
   start: function () {
     this.processBaseDirectory();
@@ -82,7 +84,7 @@ Watcher.prototype = {
         }
       }
       logger.info("Base directory updated %s", self.basepath);
-      self.events.emit("initialized");
+      self.emit("initialized");
     });
   },
 
@@ -116,7 +118,7 @@ Watcher.prototype = {
       yield subtitlesDownloader.downloadSubtitle(movedFile, "eng");
       yield subtitlesDownloader.downloadSubtitle(movedFile, "spa");
     }
-    this.events.emit("processFile", file);
+    this.emit("processedFile", file);
   },
 
   processDirectory: function *(dir) {
@@ -129,10 +131,6 @@ Watcher.prototype = {
     }
   }
 
-};
+});
 
-var watcher = function (basepath, destpath) {
-  return new Watcher(basepath, destpath);
-};
-
-module.exports = watcher;
+module.exports = Watcher;
