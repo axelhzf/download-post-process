@@ -1,6 +1,6 @@
 # Video organizer
 
-Module that organize video files (movies and tvshows) into a folder structure
+Module that organizes video files (movies and tvshows) into a folder structure
 
 
 ## Platform Compatibility
@@ -28,6 +28,14 @@ var videoOrganizer = new VideoOrganizer(options);
 videoOrganizer.start();
 
 //videoOrganizer listen to files changes to be processed
+
+videoOrganizer.on("initialized", function () {
+
+});
+
+videoOrganizer.on("processedFile", function (file) {
+
+});
 
 videoOrganizer.stop();
 ```
