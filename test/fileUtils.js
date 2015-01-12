@@ -1,7 +1,7 @@
 var fs = require("fs");
 var temp = require("temp");
-var thunkify = require("thunkify");
-var mkTempDir = thunkify(temp.mkdir);
+var Promise = require("bluebird");
+var mkTempDir = Promise.promisify(temp.mkdir);
 var _s = require("underscore.string");
 
 function createTmpFile (fullPath, size) {

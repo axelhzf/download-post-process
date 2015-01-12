@@ -6,7 +6,6 @@ var expect = require("chai").expect;
 var sinon = require("sinon");
 var Promise = require("bluebird");
 var organizer = require("../src/organizer");
-var subtitlesDownloader = require("subtitles-downloader");
 
 describe("watcher", function () {
 
@@ -24,21 +23,17 @@ describe("watcher", function () {
 
     beforeEach(function () {
       var options = {
-        basePath: basepath,
+        srcPath: basepath,
         destPath: destpath
       };
       w = new Watcher(options);
       moveStub = sinon.stub(organizer, "move", function (file) {
         return Promise.resolve(file);
       });
-      sinon.stub(subtitlesDownloader, "downloadSubtitle", function () {
-        return Promise.resolve("");
-      })
     });
 
     afterEach(function () {
       organizer.move.restore();
-      subtitlesDownloader.downloadSubtitle.restore();
     });
 
     it("should move files", function* () {

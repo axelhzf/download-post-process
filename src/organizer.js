@@ -1,10 +1,10 @@
-var fs = require("co-fs");
 var path = require("path");
 var co = require("co");
 var Promise = require("bluebird");
 var mkdirp = Promise.promisify(require("mkdirp"));
 var _ = require("underscore");
 var _s = require("underscore.string");
+var fs = require("mz/fs");
 
 function move(file, destPath) {
   return co(function* () {

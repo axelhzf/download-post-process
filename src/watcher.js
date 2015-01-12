@@ -1,5 +1,4 @@
 var organizer = require("./organizer");
-var subtitlesDownloader = require("subtitles-downloader");
 var _ = require("underscore");
 var fs = require("mz/fs");
 var path = require("path");
@@ -26,8 +25,8 @@ var GLOB = "*.+(mkv|avi|mp4)";
 var NESTED_GLOB = "**/" + GLOB;
 
 function Watcher(options) {
-  this.basepath = options.basePath;
-  this.destpath = options.destPath;
+  this.srcPath = options.srcPath;
+  this.destPath = options.destPath;
 
   this.on("initialized", this.startWatcher.bind(this));
 }
@@ -43,12 +42,12 @@ _.extend(Watcher.prototype, {
   startWatcher: function () {
     var self = this;
     var watchedEvents = _.object(["change", "rename"], []);
-    this.watcher = fs.watch(this.basepath, function (event, filename) {
+    this.watcher = fs.watch(this.srcPath, function (event, filename) {
       if (_.has(watchedEvents, event)) {
         self.onFsEvent(event, filename);
       }
     });
-    logger.info("Watching %s/%s -> %s", this.basepath, GLOB, this.destpath);
+    logger.info("Watching %s/%s -> %s", this.srcPath, GLOB, this.destPath);
   },
 
   stop: function () {
@@ -61,7 +60,7 @@ _.extend(Watcher.prototype, {
     debug("fs event [" + event + "]");
     var self = this;
     co(function *() {
-      var fullPath = path.join(this.basepath, filename);
+      var fullPath = path.join(this.srcPath, filename);
       try {
         yield self.processPath(fullPath);
       } catch (e) {
@@ -73,17 +72,17 @@ _.extend(Watcher.prototype, {
   processBaseDirectory: function () {
     var self = this;
     return co(function *() {
-      var directoryContent = yield fs.readdir(self.basepath);
+      var directoryContent = yield fs.readdir(self.srcPath);
       for (var i = 0; i < directoryContent.length; i++) {
         var content = directoryContent[i];
-        var fullPath = path.join(self.basepath, content);
+        var fullPath = path.join(self.srcPath, content);
         try {
           yield self.processPath(fullPath);
         } catch (e) {
           logger.error("Error processing path", e);
         }
       }
-      logger.info("Base directory updated %s", self.basepath);
+      logger.info("Base directory updated %s", self.srcPath);
       self.emit("initialized");
     });
   },
@@ -102,7 +101,7 @@ _.extend(Watcher.prototype, {
     var match = minimatch(baseFile, GLOB);
 
     if (!match) {
-      debug("Doesn't match %s %s/%s", file, this.basepath, GLOB);
+      debug("Doesn't match %s %s/%s", file, this.srcPath, GLOB);
       return;
     }
 
@@ -113,12 +112,14 @@ _.extend(Watcher.prototype, {
       return;
     }
 
-    var movedFile = yield organizer.move(file, this.destpath);
+    var movedFile = yield organizer.move(file, this.destPath);
     if (movedFile) {
-      yield subtitlesDownloader.downloadSubtitle(movedFile, "eng");
-      yield subtitlesDownloader.downloadSubtitle(movedFile, "spa");
+      var eventData = {
+        src: file,
+        dest: movedFile
+      };
+      this.emit("processedFile", eventData);
     }
-    this.emit("processedFile", file);
   },
 
   processDirectory: function *(dir) {
