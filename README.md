@@ -1,7 +1,6 @@
 # Video organizer
 
-Module that organizes video files (movies and tvshows) into a folder structure
-
+Organize your movies and tvshows
 
 ## Platform Compatibility
 
