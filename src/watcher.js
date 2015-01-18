@@ -5,21 +5,14 @@ var path = require("path");
 var co = require("co");
 var EventEmitter = require("events").EventEmitter;
 var exec = require('mz/child_process').exec;
-var winston = require("winston");
 var debug = require("debug")("video-organizer");
 var minimatch = require("minimatch");
 var bash = require("bash");
 var Promise = require("bluebird");
 var glob = Promise.promisify(require("glob"));
 var util = require("util");
-
-var logger = winston.loggers.add('watcher', {
-  console: {
-    level: 'silly',
-    colorize: 'true',
-    timestamp: true
-  }
-});
+var bunyan = require("bunyan");
+var PrettyStream = require("bunyan-prettystream");
 
 var GLOB = "*.+(mkv|avi|mp4)";
 var NESTED_GLOB = "**/" + GLOB;
@@ -27,6 +20,25 @@ var NESTED_GLOB = "**/" + GLOB;
 function Watcher(options) {
   this.srcPath = options.srcPath;
   this.destPath = options.destPath;
+
+  if (options.logger) {
+    this.logger = options.logger;
+  } else {
+    var prettyStdOut = new PrettyStream({
+      mode: 'dev'
+    });
+    prettyStdOut.pipe(process.stdout);
+    this.logger = bunyan.createLogger({
+      name: "video-organizer",
+      streams: [
+        {
+          level: 'info',
+          type: 'raw',
+          stream: prettyStdOut
+        }
+      ]
+    });
+  }
 
   this.on("initialized", this.startWatcher.bind(this));
 }
@@ -47,7 +59,7 @@ _.extend(Watcher.prototype, {
         self.onFsEvent(event, filename);
       }
     });
-    logger.info("Watching %s/%s -> %s", this.srcPath, GLOB, this.destPath);
+    self.logger.info("Watching %s/%s -> %s", this.srcPath, GLOB, this.destPath);
   },
 
   stop: function () {
@@ -63,7 +75,7 @@ _.extend(Watcher.prototype, {
     co(function *() {
       yield self.processPath(fullPath);
     }).catch(function (e) {
-      logger.error(e);
+      self.logger.error(e);
     });
   },
 
@@ -77,10 +89,10 @@ _.extend(Watcher.prototype, {
         try {
           yield self.processPath(fullPath);
         } catch (e) {
-          logger.error("Error processing path", e);
+          self.logger.error("Error processing path", e);
         }
       }
-      logger.info("Base directory updated %s", self.srcPath);
+      self.logger.info("Base directory updated %s", self.srcPath);
       self.emit("initialized");
     });
   },
