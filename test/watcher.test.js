@@ -8,33 +8,39 @@ var Promise = require("bluebird");
 var organizer = require("../src/organizer");
 
 describe("watcher", function () {
+  var sandbox;
 
   var basepath;
   var destpath;
+  var moveStub;
+  var w;
 
   beforeEach(function* () {
     basepath = yield fileUtils.createTmpDirectory();
     destpath = yield fileUtils.createTmpDirectory();
-  });
+    sandbox = sinon.sandbox.create();
 
-  describe("process at start", function () {
-    var w;
-    var moveStub;
-
-    beforeEach(function () {
-      var options = {
-        srcPath: basepath,
-        destPath: destpath
-      };
-      w = new Watcher(options);
-      moveStub = sinon.stub(organizer, "move", function (file) {
-        return Promise.resolve(file);
+    moveStub = sandbox.stub(organizer, "move", function (file) {
+      var destinationFile = path.join(destpath, path.basename(file))
+      console.log("destination", destinationFile);
+      return new Promise(function (resolve) {
+        resolve(destinationFile);
       });
     });
 
-    afterEach(function () {
-      organizer.move.restore();
-    });
+    var options = {
+      srcPath: basepath,
+      destPath: destpath
+    };
+    w = new Watcher(options);
+
+  });
+
+  afterEach(function () {
+    sandbox.restore();
+  });
+
+  describe("process at start", function () {
 
     it("should move files", function* () {
       var file1 = "Game.of.Thrones.S01E02.LOL.mkv";
@@ -121,6 +127,26 @@ describe("watcher", function () {
         });
       });
     }
+
+  });
+
+  describe("on fs event", function () {
+
+    it("should move files", function* (done) {
+      var file = "Game.of.Thrones.S01E02.LOL.mkv";
+
+      w.on("initialized", function () {
+        fileUtils.createTmpFile(path.join(basepath, file));
+      });
+
+      w.on("processedFile", function (e) {
+        expect(e.src).to.eql(path.join(basepath, file));
+        expect(e.dest).to.eql(path.join(destpath, file));
+        done();
+      });
+
+      w.start();
+    });
 
   });
 

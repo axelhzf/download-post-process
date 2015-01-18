@@ -57,15 +57,13 @@ _.extend(Watcher.prototype, {
   },
 
   onFsEvent: function (event, filename) {
-    debug("fs event [" + event + "]");
+    var fullPath = path.join(this.srcPath, filename);
+    debug("fs event [%s] -> %s ", event, fullPath);
     var self = this;
     co(function *() {
-      var fullPath = path.join(this.srcPath, filename);
-      try {
-        yield self.processPath(fullPath);
-      } catch (e) {
-        logger.error(e);
-      }
+      yield self.processPath(fullPath);
+    }).catch(function (e) {
+      logger.error(e);
     });
   },
 
@@ -112,6 +110,8 @@ _.extend(Watcher.prototype, {
       return;
     }
 
+
+    debug("Moving %s to %s", file, this.destPath);
     var movedFile = yield organizer.move(file, this.destPath);
     if (movedFile) {
       var eventData = {
@@ -124,10 +124,10 @@ _.extend(Watcher.prototype, {
 
   processDirectory: function *(dir) {
     var files = yield glob(NESTED_GLOB, {cwd: dir});
-    for(var i = 0; i < files.length; i++) {
+    for (var i = 0; i < files.length; i++) {
       yield this.processFile(path.join(dir, files[i]));
     }
-    if (files.length > 0 ) {
+    if (files.length > 0) {
       yield exec("rm -rf " + bash.escape(dir));
     }
   }
